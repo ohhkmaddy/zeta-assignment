@@ -1,0 +1,10 @@
+# Go binary
+/bin/
+/vendor/
+*.exe
+*.test
+# IDE files
+.idea/
+.vscode/
+# Environment files (store them securely, outside of version control)
+.env
