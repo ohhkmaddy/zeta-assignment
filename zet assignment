@@ -1,0 +1,176 @@
+MODULAR ARCHITECTURE
+/
+├── api/
+│   ├── handler.go
+│   ├── request.go
+│   └── response.go
+├── service/
+│   ├── product_service.go
+│   ├── image_service.go
+│   └── cache_service.go
+├── data/
+│   ├── database.go
+│   └── models.go
+├── queue/
+│   ├── image_queue.go
+├── config/
+│   ├── config.go
+├── utils/
+│   ├── logger.go
+│   └── error_handler.go
+└── main.go
+
+
+API design
+POST /products 
+{
+  "user_id": 1,
+  "product_name": "Smartphone",
+  "product_description": "A high-end smartphone",
+  "product_images": ["http://example.com/image1.jpg", "http://example.com/image2.jpg"],
+  "product_price": 999.99
+}
+
+GET /products/1
+{
+  "id": 1,
+  "user_id": 1,
+  "product_name": "Smartphone",
+  "product_description": "A high-end smartphone",
+  "product_images": ["http://example.com/image1.jpg", "http://example.com/image2.jpg"],
+  "compressed_product_images": ["http://s3.com/compressed_image1.jpg"],
+  "product_price": 999.99
+}
+DATA STORAGE
+CREATE TABLE products (
+  product_id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(user_id),
+  product_name VARCHAR(255),
+  product_description TEXT,
+  product_images TEXT[],  -- Array of image URLs
+  compressed_product_images TEXT[],  -- Array of processed image URLs
+  product_price DECIMAL(10, 2)
+);
+ASYNCHRONOUS IMAGE PROCESSING
+package queue
+
+import (
+	"log"
+	"github.com/streadway/amqp"
+)
+
+type RabbitMQClient struct {
+	conn *amqp.Connection
+	ch   *amqp.Channel
+}
+
+func InitRabbitMQ(url string) *RabbitMQClient {
+	conn, err := amqp.Dial(url)
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open a channel: %v", err)
+	}
+
+	return &RabbitMQClient{conn: conn, ch: ch}
+}
+
+
+func (client *RabbitMQClient) SendImageProcessingMessage(imageURLs []string) error {
+	for _, url := range imageURLs {
+		err := client.ch.Publish(
+			"",           // exchange
+			"image_queue", // queue name
+			false,        // mandatory
+			false,        // immediate
+			amqp.Publishing{
+				ContentType: "text/plain",
+				Body:        []byte(url),
+			},
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+CACHING
+func getProductFromCache(productID string) (*Product, error) {
+    cacheKey := fmt.Sprintf("product:%s", productID)
+    cachedData, err := redisClient.Get(cacheKey).Result()
+    if err == redis.Nil {
+        return nil, nil  // Cache miss, retrieve from DB
+    } else if err != nil {
+        return nil, err
+    }
+    return unmarshalProductData(cachedData), nil
+}
+
+func updateProductCache(productID string, product *Product) error {
+    cacheKey := fmt.Sprintf("product:%s", productID)
+    data := marshalProductData(product)
+    return redisClient.Set(cacheKey, data, time.Minute*10).Err()
+}
+ENHANCED LOGGING
+import "github.com/sirupsen/logrus"
+
+func logRequest(r *http.Request) {
+    logrus.WithFields(logrus.Fields{
+        "method": r.Method,
+        "url":    r.URL.Path,
+        "time":   time.Now(),
+    }).Info("Request received")
+}
+
+func logImageProcessingSuccess(imageURL string) {
+    logrus.WithFields(logrus.Fields{
+        "image_url": imageURL,
+        "status":    "processed",
+    }).Info("Image processing completed successfully")
+}
+
+func logError(err error) {
+    logrus.WithFields(logrus.Fields{
+        "error": err,
+    }).Error("Error occurred")
+}
+ERROR HANDLING
+
+package utils
+
+import (
+	"fmt"
+)
+
+func HandleError(err error) {
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+}
+TESTING
+func TestGetProductByID(t *testing.T) {
+    mockProductID := "1"
+    mockProduct := Product{
+        ID:                mockProductID,
+        ProductName:       "Smartphone",
+        ProductDescription: "A high-end smartphone",
+        ProductPrice:      999.99,
+    }
+
+    // Mock the database call
+    mockDB := &MockDatabase{}
+    mockDB.On("GetProductByID", mockProductID).Return(mockProduct, nil)
+
+    product, err := getProductByID(mockProductID, mockDB)
+    if err != nil {
+        t.Errorf("Expected no error, got %v", err)
+    }
+    if product.ID != mockProductID {
+        t.Errorf("Expected product ID %v, got %v", mockProductID, product.ID)
+    }
+}
+
+
