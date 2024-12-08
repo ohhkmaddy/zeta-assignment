@@ -1,4 +1,4 @@
-# Product Management Backend
+# zeta assignment
 
 A RESTful API written in Go for managing products. It integrates with PostgreSQL for storage, Redis for caching, RabbitMQ for asynchronous image processing, and provides structured logging with `logrus`.
 
@@ -21,5 +21,5 @@ This backend system is designed with scalability, performance, and fault toleran
 
 #### 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/product-management-backend.git
-cd product-management-backend
+git clone [https://github.com/ohhkmaddy/product-management-backend.git](https://github.com/ohhkmaddy/zocket-assignment.git )
+
