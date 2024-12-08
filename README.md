@@ -21,5 +21,5 @@ This backend system is designed with scalability, performance, and fault toleran
 
 #### 1. Clone the repository:
 ```bash
-git clone https://github.com/ohhkmaddy/zocket-assignment.git 
+https://github.com/ohhkmaddy/zocket-assignment.git 
 
